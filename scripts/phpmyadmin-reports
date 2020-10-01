@@ -1,0 +1,278 @@
+#! /usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+phpMyAdmin work reporting tool
+
+Generates list of commits and issues handled in given period.
+
+Copyright © 2016 Michal Čihař <michal@cihar.com>
+
+Requirements:
+
+* Python 3
+* PyGithub
+* python-dateutil
+"""
+
+from configparser import RawConfigParser, NoOptionError, NoSectionError
+import os
+import sys
+from datetime import datetime, timedelta
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import dateutil.parser
+try:
+    from github import Github
+except ImportError:
+    print('PyGithub is required, please install it')
+    print(' * using pip: pip3 install PyGithub')
+    print(' * using apt: apt install python3-github')
+    sys.exit(1)
+
+# Settings
+
+# List of projects to report
+PROJECTS = (
+    'phpmyadmin/phpmyadmin',
+    'phpmyadmin/phpmyadmin-security',
+    'phpmyadmin/docker',
+    'phpmyadmin/website',
+    'phpmyadmin/sql-parser',
+    'phpmyadmin/motranslator',
+    'phpmyadmin/private',
+    'phpmyadmin/shapefile',
+    'phpmyadmin/simple-math',
+    'phpmyadmin/localized_docs',
+    'phpmyadmin/error-reporting-server',
+    'phpmyadmin/twig-i18n-extension',
+)
+# Only include commits not present elsewhere from this repository
+PROJECT_EXTRA_COMMITS = (
+    'phpmyadmin/phpmyadmin-security',
+)
+# Private repositories not to list in weekly reports
+PRIVATE = (
+    'phpmyadmin/phpmyadmin-security',
+    'phpmyadmin/private',
+)
+
+# Markdown esp
+MARDOWN_TRANS = str.maketrans({
+    "[":  r"\[",
+    "]":  r"\]",
+    "\\": r"\\",
+    '>': r'\>',
+})
+
+
+def get_parser():
+    """Create command line argument parser."""
+    parser = ArgumentParser(
+        description='phpMyAdmin work reporting tool\n\nGenerates list of commits and issues handled in given period.',
+        epilog='Credentials can be also stored in ~/.config/phpmyadmin:\n\n[github]\nuser=USER\ntoken=TOKEN',
+        formatter_class=RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        '-u', '--user',
+        help='GitHub username, used for both reporting and authentication'
+    )
+    parser.add_argument(
+        '-t', '--token',
+        help='GitHub authentication token'
+    )
+    parser.add_argument(
+        '-s', '--start-date',
+        type=dateutil.parser.parse,
+        default=datetime.now() - timedelta(days=7),
+        help='Starting datetime, defaults to 7 days ago'
+    )
+    parser.add_argument(
+        '-e', '--end-date',
+        type=dateutil.parser.parse,
+        default=datetime.now(),
+        help='Ending datetime, defaults to current timestamp'
+    )
+    parser.add_argument(
+        '-f', '--format',
+        choices=('markdown', ),
+        default='markdown',
+        help='Output format',
+    )
+    parser.add_argument(
+        '-w', '--weekly',
+        action='store_true',
+        help='Weekly report not including private repositories'
+    )
+    parser.add_argument(
+        '-W', '--last-week',
+        action='store_true',
+        help='Create report for last week'
+    )
+    parser.add_argument(
+        '-M', '--last-month',
+        action='store_true',
+        help='Create report for last month'
+    )
+    parser.add_argument(
+        '--this-week',
+        action='store_true',
+        help='Create report for this week'
+    )
+    return parser
+
+
+def get_repo_data(gh, user, name, start, end):
+    """Get data for single repository"""
+    repo = gh.get_repo(name)
+
+    commits = []
+    issues = []
+
+    all_commits = repo.get_commits(author=user, since=start, until=end)
+    for commit in all_commits:
+        # skip merge commits
+        if len(commit.parents) == 1:
+            commits.append(commit)
+
+    all_issues = repo.get_issues(
+        assignee=user, state='closed', sort='updated', direction='desc'
+    )
+    for issue in all_issues:
+        if issue.updated_at < start:
+            break
+        if issue.closed_at > end:
+            continue
+        if issue.closed_at < start:
+            continue
+        issues.append(issue)
+
+    return issues, commits
+
+
+def get_data(user, token, start, end, weekly):
+    """Retrieves data from github"""
+    gh = Github(user, token)
+
+    issues = []
+    commits = []
+    commit_set = set()
+
+    for project in PROJECTS:
+        if weekly and project in PRIVATE:
+            continue
+        issues_new, commits_new = get_repo_data(gh, user, project, start, end)
+        # Include all issues
+        issues.extend(issues_new)
+
+        if project in PROJECT_EXTRA_COMMITS:
+            # Only include commits not seen so far from this repo
+            for commit in commits_new:
+                sha = commit.sha[:7]
+                if sha not in commit_set:
+                    commits.append(commit)
+                    commit_set.add(sha)
+        else:
+            # Include all commits
+            commits.extend(commits_new)
+            commit_set.update([commit.sha[:7] for commit in commits_new])
+
+    return issues, commits
+
+
+def markdown_escape(text):
+    """Escapes string to be used in markdown link"""
+    return text.translate(MARDOWN_TRANS)
+
+
+def markdown_item(title, url):
+    """Displays single markdown item"""
+    print('* [{0}]({1})'.format(
+        markdown_escape(title),
+        markdown_escape(url),
+    ))
+
+
+def markdown_report(issues, commits):
+    """Displays report in markdown"""
+    print()
+    print('Handled issues:')
+    print()
+
+    for issue in issues:
+        markdown_item(
+            '#{0} {1}'.format(
+                issue.number,
+                issue.title,
+            ),
+            issue.html_url,
+        )
+
+    print()
+    print('Commits:')
+    print()
+
+    for commit in commits:
+        markdown_item(
+            '{0} - {1}'.format(
+                commit.sha[:7],
+                commit.commit.message.split('\n')[0]
+            ),
+            commit.html_url,
+        )
+
+
+def merge_config(user, token):
+    """Merges user configuration if no credentials on commandline"""
+    if user is not None and token is not None:
+        return (user, token)
+
+    config = RawConfigParser()
+    config.read(os.path.expanduser('~/.config/phpmyadmin'))
+
+    try:
+        if user is None:
+            user = config.get('github', 'user')
+        if token is None:
+            token = config.get('github', 'token')
+    except (NoSectionError, NoOptionError):
+        print('Missing GitHub credentials!')
+        print('Please provide them on command line or in ~/.config/phpmyadmin')
+        sys.exit(1)
+
+    return user, token
+
+
+def main(params):
+    """Main program"""
+    parser = get_parser()
+
+    args = parser.parse_args(params)
+
+    user, token = merge_config(args.user, args.token)
+
+    if args.last_week or args.this_week:
+        weekly = True
+        end = datetime.now()
+        end -= timedelta(days=1 + end.weekday())
+        if args.this_week:
+            end += timedelta(days=7)
+        start = end - timedelta(days=6)
+    elif args.last_month:
+        end = datetime.now().replace(day=1) - timedelta(days=1)
+        start = end.replace(day=1)
+        weekly = False
+    else:
+        start = args.start_date
+        end = args.end_date
+        weekly = args.weekly
+
+    start = datetime(start.year, start.month, start.day)
+    end = datetime(end.year, end.month, end.day, 23, 59, 59)
+
+    issues, commits = get_data(user, token, start, end, weekly)
+
+    if args.format == 'markdown':
+        markdown_report(issues, commits)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

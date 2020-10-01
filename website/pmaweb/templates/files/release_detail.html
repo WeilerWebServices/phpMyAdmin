@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>phpMyAdmin {{ release.version }}</h2>
+
+<p>Released {{release.date|date:"Y-m-d"}}.</p>
+
+{{ release.release_notes }}
+
+{% include "_dllist.html" %}
+
+{% include "_verify.html" %}
+
+{% endblock %}

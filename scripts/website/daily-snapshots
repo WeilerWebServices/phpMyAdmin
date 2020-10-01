@@ -1,0 +1,39 @@
+#!/bin/sh
+# Script to generate daily snapshots
+set -e
+
+# phpMyAdmin working copy
+cd ~/phpmyadmin
+
+# Update to have latest create-release.sh
+git pull -q
+
+# Remove current release files
+rm -rf release
+
+# Create snapshots
+./scripts/create-release.sh --daily 4.9+snapshot QA_4_9
+./scripts/create-release.sh --daily 5.0+snapshot QA_5_0
+./scripts/create-release.sh --daily 5.1+snapshot master
+
+# Storage directory
+mkdir -p /mnt/storage/files/snapshots/
+
+# Remove old snapshots
+rm -f /mnt/storage/files/snapshots/*
+
+# Move new files
+mv release/*.* /mnt/storage/files/snapshots/
+
+# Rsync to CDN
+rsync -va /mnt/storage/files/ cdn:/www/
+
+# trigger website scan
+cd /home/builder/website/
+./manage.py import_files
+
+# Trigger docker build for edge-4.9
+./manage.py docker_trigger --tag edge-4.9
+
+# Trigger docker build for edge-5.0
+./manage.py docker_trigger --tag edge-5.0

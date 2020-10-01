@@ -1,0 +1,6 @@
+#!/bin/sh
+for x in po/*.po  ; do 
+    lang=`basename $x`
+    echo -n "$lang: "
+    msgfmt --statistics --check -o - $x > /dev/null
+done

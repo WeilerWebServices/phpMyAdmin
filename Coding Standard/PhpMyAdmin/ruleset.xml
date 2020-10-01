@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="phpMyAdmin coding standard" xsi:noNamespaceSchemaLocation="../vendor/squizlabs/php_codesniffer/phpcs.xsd">
+    <description>The phpMyAdmin coding standard.</description>
+
+    <rule ref="Doctrine">
+        <!-- Do not add a space before the return type colon -->
+        <!-- See SlevomatCodingStandard.TypeHints.ReturnTypeHintSpacing -->
+        <properties>
+            <property name="spacesCountBeforeColon" value="0"/>
+        </properties>
+
+        <!-- Do not require multiple assignment alignment -->
+        <exclude name="Generic.Formatting.MultipleStatementAlignment"/>
+
+        <!-- Allow the 'global' keyword -->
+        <exclude name="Squiz.PHP.GlobalKeyword"/>
+
+        <!-- Disable the superfluous class naming rules -->
+        <exclude name="SlevomatCodingStandard.Classes.SuperfluousAbstractClassNaming"/>
+        <exclude name="SlevomatCodingStandard.Classes.SuperfluousExceptionNaming"/>
+        <exclude name="SlevomatCodingStandard.Classes.SuperfluousInterfaceNaming"/>
+        <exclude name="SlevomatCodingStandard.Classes.SuperfluousTraitNaming"/>
+    </rule>
+</ruleset>

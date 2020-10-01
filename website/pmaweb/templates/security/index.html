@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load staticfiles %}
+
+{% block content %}
+
+<div class="row">
+
+<div class="col-md-9">
+<h2>Security</h2>
+
+<p>
+We take seriously any security issues found in our code. On the right
+side, you can see past security issues which were discovered and fixed.
+For critical issues, we publish a security release (whose number contains
+a fourth digit like 3.3.10.5). See our <a href="https://docs.phpmyadmin.net/en/latest/security.html">documentation</a>
+for more details about our security policy.
+</p>
+
+{% include "_security_contact.html" %}
+
+<p>
+Please note that any support requests on this address will not be answered;
+you should use the standard support ways mentioned on the
+<a href="{% url 'support' %}">support</a> page.
+</p>
+
+<p>
+To follow latest security releases you can use a <a href="{% url 'feed-security' %}">RSS feed</a>.
+</p>
+
+</div>
+{% include "security/_list.html" %}
+
+</div>
+
+{% endblock %}

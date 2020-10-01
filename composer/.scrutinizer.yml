@@ -1,0 +1,34 @@
+# scrutinizer-ci.com configuration
+imports:
+  - javascript
+  - php
+filter:
+  excluded_paths:
+    - build/
+    - js/vendor/
+    - js/dist/
+    - node_modules/
+    - tmp/
+    - vendor/
+    - test/doctum-config.php
+checks:
+  javascript: true
+  php: true
+tools:
+  external_code_coverage:
+    runs: 4 # php 7.x versions
+    timeout: 900 # 15 min
+build:
+  nodes:
+    analysis:
+      environment:
+        php: 7.1
+        node: 10
+      dependencies:
+        before:
+          - composer install
+          - composer require tecnickcom/tcpdf pragmarx/google2fa-qrcode samyoul/u2f-php-server
+      tests:
+        override:
+          - php-scrutinizer-run
+          - phpcs-run

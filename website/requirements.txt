@@ -1,0 +1,10 @@
+Django>=1.11,<2.0
+python-dateutil
+feedparser
+django-markupfield
+docutils
+Markdown
+pytz
+beautifulsoup4
+django_compressor!=2.0
+django-appconf<=1.0.3

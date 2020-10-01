@@ -1,0 +1,31 @@
+# scrutinizer-ci.com configuration
+imports:
+    - javascript
+    - php
+filter:
+    excluded_paths:
+        - webroot/
+        - logs/
+        - build/
+        - node_modules/
+        - tmp/
+        - vendor/
+checks:
+    php: true
+tools:
+  external_code_coverage:
+    runs: 4 # php 7.x versions
+    timeout: 900 # 15 min
+
+build:
+    nodes:
+        analysis:
+            environment:
+                php: 7.1
+            dependencies:
+                before:
+                    - composer install
+            tests:
+                override:
+                    - php-scrutinizer-run
+                    - phpcs-run

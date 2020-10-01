@@ -1,0 +1,3 @@
+{{ latest_release.version }}
+{{ latest_release.date|date:"Y-m-d" }}
+{{ latest_release.simpledownload.get_absolute_url }}

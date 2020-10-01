@@ -1,0 +1,37 @@
+#!/bin/sh
+# Script to check MySQL/MariaDB server status
+
+if [ -z "$1" -o -z "$2" ] ; then
+	echo "Usage: mysql-tester NAME ADDRESS"
+	exit 1
+fi
+
+# Test Debian maintenance user
+if ! ssh -xka2 demo-$1 /usr/bin/mysqladmin status 2> /dev/null ; then
+    exit 1
+fi
+
+# Test root user
+if ! mysql -uroot -h $2 -e 'SHOW DATABASES' 2> /dev/null ; then
+    exit 2
+fi
+
+# Test root user privileges
+if ! mysql -uroot -h $2 -e 'SELECT * FROM mysql.user' 2> /dev/null ; then
+    exit 2
+fi
+
+# Test pma user
+if ! mysql -upma -pheslo -h $2 -e 'SHOW DATABASES' 2> /dev/null ; then
+    exit 3
+fi
+
+# Test configuration storage
+if ! mysql -uroot -h $2 -e 'USE phpmyadmin' 2> /dev/null ; then
+    exit 4
+fi
+if [ `mysql -uroot -h $2 -e 'SHOW TABLES FROM phpmyadmin' | wc -l` -ne 20 ] ; then
+    exit 5
+fi
+
+exit 0

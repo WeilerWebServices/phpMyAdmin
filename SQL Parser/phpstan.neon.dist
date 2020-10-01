@@ -1,0 +1,13 @@
+includes:
+    - phpstan-baseline.neon
+parameters:
+    level: max
+    paths:
+        - bin
+        - src
+        - tests
+        - tools
+    reportUnmatchedIgnoredErrors: true
+    inferPrivatePropertyTypeFromConstructor: true
+    excludes_analyse:
+        - tools/doctum-config.php

@@ -1,0 +1,57 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Property PhpMyAdmin\\\\ShapeFile\\\\ShapeFile\\:\\:\\$shpFile has no typehint specified\\.$#"
+			count: 1
+			path: src/ShapeFile.php
+
+		-
+			message: "#^Property PhpMyAdmin\\\\ShapeFile\\\\ShapeFile\\:\\:\\$shxFile has no typehint specified\\.$#"
+			count: 1
+			path: src/ShapeFile.php
+
+		-
+			message: "#^Property PhpMyAdmin\\\\ShapeFile\\\\ShapeFile\\:\\:\\$dbfFile has no typehint specified\\.$#"
+			count: 1
+			path: src/ShapeFile.php
+
+		-
+			message: "#^Property PhpMyAdmin\\\\ShapeFile\\\\ShapeFile\\:\\:\\$dbfHeader has no typehint specified\\.$#"
+			count: 1
+			path: src/ShapeFile.php
+
+		-
+			message: "#^Parameter \\#1 \\$fp of function feof expects resource, resource\\|false given\\.$#"
+			count: 1
+			path: src/ShapeFile.php
+
+		-
+			message: "#^Parameter \\#1 \\$fp of function fread expects resource, resource\\|false given\\.$#"
+			count: 1
+			path: src/ShapeFile.php
+
+		-
+			message: "#^Parameter \\#1 \\$str of function substr expects string, string\\|false given\\.$#"
+			count: 6
+			path: src/ShapeFile.php
+
+		-
+			message: "#^Parameter \\#1 \\$fp of function fclose expects resource, resource\\|false given\\.$#"
+			count: 1
+			path: src/ShapeFile.php
+
+		-
+			message: "#^Property PhpMyAdmin\\\\ShapeFile\\\\ShapeRecord\\:\\:\\$shapeType has no typehint specified\\.$#"
+			count: 1
+			path: src/ShapeRecord.php
+
+		-
+			message: "#^Parameter \\#2 \\$record_number of function dbase_get_record_with_names expects int, int\\|null given\\.$#"
+			count: 1
+			path: src/ShapeRecord.php
+
+		-
+			message: "#^Parameter \\#3 \\$record_number of function dbase_replace_record expects int, int\\|null given\\.$#"
+			count: 1
+			path: src/ShapeRecord.php
+

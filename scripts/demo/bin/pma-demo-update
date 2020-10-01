@@ -1,0 +1,121 @@
+#!/bin/sh
+# Script to update repositories for the demo server
+# Requires ~/scripts to be checkout of scripts repository
+
+set -e
+
+# Directory where repositories are stored
+BASEDIR=~/.pma-demo
+
+# Remote URL of repository to checkout
+REMOTE=https://github.com/phpmyadmin/phpmyadmin.git
+REMOTE_THEMES=https://github.com/phpmyadmin/themes.git
+
+# List of repositories to checkout
+REPOS=`awk '/^branches/ {print $3}' ~/scripts/demo/php/versions.ini`
+THEMES=`awk '/^themes/ {print $3}' ~/scripts/demo/php/versions.ini`
+
+# Update all repositories
+for REPONAME in $REPOS ; do
+    DIRNAME=$BASEDIR/$REPONAME
+    mkdir -p $DIRNAME
+
+    if [ ! -d $DIRNAME/.git ] ; then
+        cd $BASEDIR
+
+        # Clone the repository
+        if [ $REPONAME != 'master' ] ; then
+            # Use master as reference repository to share objects database
+            git clone --reference $BASEDIR/master $REMOTE $REPONAME
+        else
+            git clone $REMOTE $REPONAME
+        fi
+
+        # Checkout correct branch
+        cd $DIRNAME
+        git checkout ${REPONAME%%-*}
+
+        # Symlink configuration
+        FLAVOUR=${REPONAME#*-}
+        if [ -f ~/scripts/demo/php/config-$FLAVOUR.inc.php ] ; then
+            ln -sf ~/scripts/demo/php/config-$FLAVOUR.inc.php config.inc.php
+        else
+            ln -sf ~/scripts/demo/php/config.inc.php config.inc.php
+        fi
+        ln -sf ~/scripts/demo/php/config.*.inc.php .
+    else
+        # Check for updates
+        cd $DIRNAME
+        orig_head=$(git log -n 1 --format=format:'%H')
+        git pull -q
+        new_head=$(git log -n 1 --format=format:'%H')
+
+        # Check if there has been an update
+        if [ $orig_head = $new_head -a "x$1" != "x--force" ] ; then
+            continue
+        fi
+    fi
+
+    # Store revision info
+    ~/scripts/demo/bin/pma-revision-info
+
+    # Create temp dir
+    mkdir -p tmp/
+    chmod 770 tmp/
+    chgrp www-data tmp/
+
+    # Update composer deps
+    if [ -f composer.json ] ; then
+        composer update --quiet --no-dev
+    fi
+
+    if [ -f package.json ] ; then
+        # We still redirect output to /dev/null because even with the --silent flag, yarn still gives sass output such as
+        # $ sass themes/pmahomme/scss:themes/pmahomme/css themes/original/scss:themes/original/css themes/metro/scss:themes/metro/css
+        yarn install --non-interactive --silent > /dev/null
+    fi
+
+    if [ -f libraries/cache/routes.cache.php ] ; then
+        rm -f libraries/cache/routes.cache.php
+    fi
+
+    # Link themes
+    for THEME in $THEMES ; do
+        if [ ! -e themes/$THEME ] ; then
+            ln -s ../../themes/$THEME themes/$THEME
+        fi
+    done
+
+    # Generate locales
+    if [ -f ./scripts/generate-mo ] ; then
+        ./scripts/generate-mo --quiet
+    fi
+
+    # Calculate locales percentages to get warnings for missing translations
+    if [ -f ./scripts/remove-incomplete-mo ] ; then
+        ./scripts/remove-incomplete-mo 0
+    fi
+done
+
+# Clone / update themes
+if [ -d $BASEDIR/themes/.git ] ; then
+    cd $BASEDIR/themes
+    git pull -q
+else
+    git clone $REMOTE_THEMES $BASEDIR/themes
+fi
+
+# Delete stale directories
+find $BASEDIR -maxdepth 1 -mindepth 1 -type d | while read DIRNAME ; do
+    REPO=${DIRNAME##*/}
+    if [ $REPO = themes ] ; then
+        continue
+    fi
+    for TESTREPO in $REPOS ; do
+        if [ $TESTREPO = $REPO ] ; then
+            continue 2
+        fi
+    done
+    echo "Deleting stale repository $DIRNAME"
+    rm -rf "$DIRNAME"
+done
